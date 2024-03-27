@@ -1,8 +1,10 @@
 import paramiko
 import time
+from yaml import safe_load
+import os
 
 
-# Given an open connection using the paramiko library then sending the appropiate command
+# Given an open connection using the paramiko library then sending the appropriate command
 # it waits for a second for the command to be processed
 def send_cmd(conn, command):
     # conn >> paramiko SSH client object
@@ -15,23 +17,20 @@ def get_output(conn):
 
 if __name__ == '__main__':
 
-    # This the dic of the devices as well as the commands you would like to excute, of course in a production enviroment with dozens of devices this would
-    # be a database, and you would call it but for simplicity here it will be just a dic
-    host_dict = {
-        "IP/hostname": "show network",
-        "IP/hostname": "show audit-log",
-    }
+    # host_root now is a dict that contains information about our hosts/devices
+    with open("hosts.yaml", "r") as handle:
+        host_root = safe_load(handle)
 
-    for hostname, cmd in host_dict.items():
+    for host in host_root["host_list"]:
         # Paramiko is used as a client here
         conn_params = paramiko.SSHClient()
         # Just so paramiko doesn't refuse connection due to missing SSH keys
         conn_params.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         conn_params.connect(
-            hostname=hostname,
+            hostname=host["ipaddr"],
             port=22,
-            username="name",
-            password="pass", # Of course you shouldn't store your credentials like this but again just for the sake of simplicity
+            username=host["hostname"],
+            password=host["pass"], # Of course you shouldn't store your credentials like this but again just for the sake of simplicity
             look_for_keys=False,
             allow_agent=False,
         )
@@ -43,7 +42,7 @@ if __name__ == '__main__':
 
         commands = [
             "show version",
-            cmd,
+            host["cmd"],
         ]
         # An empty string to collect the commands output and put them in a file
         concat_output = ""
@@ -55,8 +54,8 @@ if __name__ == '__main__':
         conn.close()
 
         # Open a new txt file per host and write the output
-        print(f"Writing {hostname} facts to file")
-        with open(f"{hostname}_facts.txt", "w") as handle:
+        print(f"Writing {host['name']} facts to file")
+        with open(f"{host['name']}_facts.txt", "w") as handle:
             handle.write(concat_output)
 
 
